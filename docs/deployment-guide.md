@@ -409,15 +409,20 @@ docker compose -f deploy/docker-compose.yml down -v            # 停止并删除
 
 ### 11.3 应用在宿主机、监控在 Docker（混合模式）
 
+使用专用的监控栈 compose 文件（仅含 4 个监控服务，与全容器模式共用命名卷）：
+
 ```bash
-# 1) 只启动监控栈（注释/跳过 app 服务）
-docker compose -f deploy/docker-compose.yml up -d otel-collector tempo prometheus grafana
+# 1) 只启动监控栈
+docker compose -f deploy/docker-compose.infra.yml up -d
 
 # 2) 宿主机运行应用（需 Python 3.10+）
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 agent-web          # 默认 http://127.0.0.1:8000，上报 localhost:4317
 ```
+
+> 完整的混合部署/迁移方案（同机、异机、从全容器迁移、systemd 常驻、故障排查）
+> 见 **`docs/hybrid-deployment-guide.md`**。
 
 ### 11.4 上报到外部 Collector
 
@@ -431,7 +436,8 @@ agent-web          # 默认 http://127.0.0.1:8000，上报 localhost:4317
 | 现象 | 原因 | 解决 |
 | --- | --- | --- |
 | `docker: command not found`（WSL） | Docker Desktop 未开启 WSL 集成 | Settings → Resources → WSL Integration 勾选该发行版，重开终端 |
-| 构建 app 报 `failed to fetch anonymous token ... python:3.12-slim` | Docker Hub 网络抖动 | `docker pull python:3.12-slim` 重试；或改用 §7 离线镜像 |
+| 构建/启动拉镜像报 `failed to fetch anonymous token`、`i/o timeout`、`TLS handshake timeout` | Docker Hub 不可达 | 见 §12.1（镜像加速 / 预拉 / 离线） |
+| 构建报 `Could not fetch URL https://pypi.org/simple/...`、`Read timed out`（`RUN pip install` 阶段） | PyPI 不可达 | 见 §12.1（`PIP_INDEX_URL` 镜像源） |
 | `docker compose ps` 中 app 只有 `8000/tcp`，无 `0.0.0.0:8000->8000` | 宿主 8000 被占用（如本机 `agent-web`） | 停掉占用进程后 `docker compose ... up -d --force-recreate app` |
 | PowerShell `Invoke-WebRequest` 请求超时 | 系统代理拦截 | 用 `curl.exe --noproxy "*"` |
 | Tempo `/ready` 返回 503 | 刚启动尚未就绪 | 等待 10~30s 后重试 |
@@ -445,6 +451,74 @@ agent-web          # 默认 http://127.0.0.1:8000，上报 localhost:4317
 ```bash
 docker compose -f deploy/docker-compose.yml logs --tail 50
 ```
+
+### 12.1 构建时网络错误专项
+
+构建分两步联网：**拉基础镜像（Docker Hub）** 与 **`pip install`（PyPI）**。先看报错出现在哪一步，再对症处理。
+
+**A. 拉基础镜像失败（Docker Hub）**
+
+典型报错：`failed to fetch anonymous token ... connection forcibly closed` / `dial tcp ... i/o timeout`。
+
+```bash
+# 1) 单独重试（网络抖动常见）
+docker pull python:3.12-slim
+docker pull otel/opentelemetry-collector-contrib:0.111.0
+docker pull grafana/tempo:2.6.1
+docker pull prom/prometheus:v2.55.0
+docker pull grafana/grafana:11.3.0
+```
+
+仍失败则配置镜像加速器（Docker Desktop：`Settings → Docker Engine`，加入 `registry-mirrors` 后 `Apply & Restart`）：
+
+```json
+{
+  "registry-mirrors": [
+    "https://docker.m.daocloud.io",
+    "https://dockerproxy.com"
+  ]
+}
+```
+
+> 镜像加速器可用性随时间变化，请以当前可用的为准；若全部不可用，改用 §7 离线镜像方案。
+
+**B. `pip install` 依赖失败（PyPI）**
+
+典型报错：
+
+- `Could not fetch URL https://pypi.org/simple/...` / `Read timed out`
+- `ERROR: Could not find a version that satisfies the requirement setuptools>=68.0 (from versions: none)`
+
+> 说明：`python:3.12-slim` 只装了 pip，**不含 setuptools**。`pip install .` 触发构建隔离时会去下载 `setuptools>=68.0`，若索引不可达就会得到 `from versions: none`。Dockerfile 已显式从同一索引安装构建后端并用 `--no-build-isolation`，因此只需保证索引可达。
+
+Dockerfile 已支持通过构建参数指定镜像源（默认仍为官方 PyPI）：
+
+```bash
+# 使用清华源构建 app 镜像
+PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+  docker compose -f deploy/docker-compose.yml build app
+
+# 或直接 docker build
+docker build -f deploy/Dockerfile \
+  --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+  -t agent-demo-observability-app:latest .
+```
+
+常见镜像源：清华 `https://pypi.tuna.tsinghua.edu.cn/simple`、阿里 `https://mirrors.aliyun.com/pypi/simple/`。
+若镜像源为 HTTP，需追加 `--trusted-host`（如 `--trusted-host mirrors.aliyun.com`）。
+
+**C. 通过 HTTP 代理构建**
+
+```bash
+docker build -f deploy/Dockerfile \
+  --build-arg HTTP_PROXY=http://<proxy>:<port> \
+  --build-arg HTTPS_PROXY=http://<proxy>:<port> \
+  -t agent-demo-observability-app:latest .
+```
+
+**D. 完全离线**
+
+在已成功的机器上 `docker save` 全部镜像，目标机 `docker load` 后用 `--no-build` 启动，详见 §7。
 
 ---
 

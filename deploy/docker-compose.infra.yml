@@ -1,0 +1,35 @@
+name: agent-demo-observability
+
+# 监控栈专用（混合部署模式：应用在宿主机运行，其余服务用 Docker）。
+#
+# 用法：
+#   docker compose -f deploy/docker-compose.infra.yml up -d
+#
+# 服务定义复用 docker-compose.yml（extends），避免两处配置漂移；
+# 项目名一致，因此与全容器模式共用同一套命名卷（数据可延续）。
+
+services:
+  otel-collector:
+    extends:
+      file: docker-compose.yml
+      service: otel-collector
+
+  tempo:
+    extends:
+      file: docker-compose.yml
+      service: tempo
+
+  prometheus:
+    extends:
+      file: docker-compose.yml
+      service: prometheus
+
+  grafana:
+    extends:
+      file: docker-compose.yml
+      service: grafana
+
+volumes:
+  tempo-data:
+  prometheus-data:
+  grafana-data:
