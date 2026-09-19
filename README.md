@@ -7,8 +7,8 @@
 - 对话式 Agent，支持多轮上下文
 - 内置示例工具：计算器、获取当前时间
 - 支持任何 OpenAI 兼容 API（OpenAI、DeepSeek、vLLM 等）
-- 提供 Web 页面，支持流式问答
-- 基于 OpenTelemetry 的可观测性（Trace + Metrics），可对接 Grafana
+- 提供 Web 页面，支持流式问答（打字机打印效果）
+- 基于 OpenTelemetry 的可观测性（Trace + Metrics + Logs），可对接 Grafana
 
 ## 快速开始
 
@@ -35,27 +35,29 @@ src/agent_demo/
 ├── agent.py         # Agent 核心循环（含流式版本）
 ├── main.py          # CLI 入口
 ├── web.py           # Web 服务（FastAPI + SSE 流式接口）
-├── telemetry.py     # OpenTelemetry 初始化与埋点辅助
+├── telemetry.py     # OpenTelemetry 初始化与埋点辅助（Trace/Metrics/Logs）
 ├── static/
-│   └── index.html   # 聊天页面
+│   └── index.html   # 聊天页面（打字机流式效果）
 └── tools.py         # 工具定义与实现
 
 deploy/
-├── docker-compose.yml          # Collector + Tempo + Prometheus + Grafana + App
+├── docker-compose.yml          # Collector + Tempo + Loki + Prometheus + Grafana + App
 ├── Dockerfile                  # 应用镜像
-├── otel-collector/config.yaml  # OTLP 接收，分发到 Tempo / Prometheus
+├── otel-collector/config.yaml  # OTLP 接收，分发到 Tempo / Prometheus / Loki
 ├── tempo/tempo.yaml            # Trace 存储
+├── loki/loki.yaml              # 日志存储
 ├── prometheus/prometheus.yml   # 抓取 Collector 暴露的指标
 └── grafana/                    # 数据源与仪表盘自动配置
 ```
 
 ## 可观测性（OpenTelemetry + Grafana）
 
-应用通过 OTLP (gRPC) 上报 Trace 与 Metrics，链路为：
+应用通过 OTLP (gRPC) 上报 Trace、Metrics 与 Logs，链路为：
 
 ```
 agent-demo ──OTLP──▶ OpenTelemetry Collector ──▶ Tempo（Trace）
-                                            └──▶ Prometheus（Metrics）
+                                            ├──▶ Prometheus（Metrics）
+                                            └──▶ Loki（Logs）
                                                      │
                                                  Grafana 展示
 ```
@@ -64,6 +66,7 @@ agent-demo ──OTLP──▶ OpenTelemetry Collector ──▶ Tempo（Trace�
 
 - **Trace**：`invoke_agent agent-demo`（一次问答）→ `chat <model>`（每次 LLM 调用）、`execute_tool <name>`（工具调用），并附带 GenAI 语义约定属性（模型、输入/输出 token、工具名、错误类型）。
 - **Metrics**：`agent.requests`、`agent.tokens`（按 input/output）、`agent.llm.duration`、`agent.tool.calls`；另有 FastAPI 自动埋点产生的 `http.server.*`。
+- **Logs**：应用日志（请求开始/结束、工具调用、Token 用量等）经 OTLP 写入 Loki；日志行包含 `trace_id=xxx`，在 Grafana 中可点击跳转到对应 Trace。
 
 ### 启动监控栈
 
@@ -79,11 +82,13 @@ docker compose -f deploy/docker-compose.yml up -d --build
 | --- | --- |
 | Grafana | http://localhost:3000 （匿名 Admin，直接进入）|
 | Prometheus | http://localhost:9090 |
+| Loki | http://localhost:3100 |
 | Tempo | http://localhost:3200 |
 | OTLP Collector | localhost:4317 (gRPC) / localhost:4318 (HTTP) |
 
-Grafana 已自动配置好 Prometheus / Tempo 数据源与 **agent-demo Observability** 仪表盘；
-Trace 可在 **Explore** 中用 TraceQL 查询：`{ resource.service.name = "agent-demo" }`。
+Grafana 已自动配置好 Prometheus / Loki / Tempo 数据源与 **agent-demo 可观测性** 仪表盘（指标面板为中文，含应用日志面板）；
+Trace 可在 **Explore** 中用 TraceQL 查询：`{ resource.service.name = "agent-demo" }`；
+日志可用 LogQL 查询：`{service_name="agent-demo"}`。
 
 ### 本地运行应用（应用在宿主机、监控在 Docker）
 

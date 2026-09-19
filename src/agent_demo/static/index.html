@@ -44,6 +44,25 @@
     }
     .user { align-self: flex-end; background: #0a84ff; color: #fff; }
     .agent { align-self: flex-start; background: #f0f0f2; color: #1c1c1e; }
+    .msg.agent.streaming::after {
+      content: "▍";
+      margin-left: 2px;
+      color: #0a84ff;
+      animation: blink 0.9s steps(1) infinite;
+    }
+    .msg.agent.streaming:empty::before {
+      content: "思考中…";
+      color: #8e8e93;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
     .tool {
       align-self: flex-start;
       font-size: 12px;
@@ -111,6 +130,43 @@
       chat.scrollTop = chat.scrollHeight;
     }
 
+    // 打字机效果：将到达的文本放入缓冲区，逐字渲染，模拟流式打印。
+    const TYPE_INTERVAL = 16; // 每帧间隔（毫秒）
+    let typeBuffer = "";
+    let typeTimer = null;
+
+    function startTyping(el) {
+      if (typeTimer) return;
+      typeTimer = setInterval(() => {
+        if (!typeBuffer.length) {
+          clearInterval(typeTimer);
+          typeTimer = null;
+          return;
+        }
+        // 缓冲积压越多，每帧打印越多字，保证追得上 LLM 输出速度
+        const step = typeBuffer.length > 120 ? 12 : typeBuffer.length > 40 ? 4 : 1;
+        el.textContent += typeBuffer.slice(0, step);
+        typeBuffer = typeBuffer.slice(step);
+        scrollDown();
+      }, TYPE_INTERVAL);
+    }
+
+    function enqueueText(el, text) {
+      typeBuffer += text;
+      startTyping(el);
+    }
+
+    function flushText(el) {
+      if (typeTimer) {
+        clearInterval(typeTimer);
+        typeTimer = null;
+      }
+      if (typeBuffer.length) {
+        el.textContent += typeBuffer;
+        typeBuffer = "";
+      }
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = input.value.trim();
@@ -121,6 +177,7 @@
       send.disabled = true;
       addMessage("user", text);
       const agentDiv = addMessage("agent", "");
+      agentDiv.classList.add("streaming");
 
       try {
         const res = await fetch("/api/chat", {
@@ -149,8 +206,7 @@
             if (data.type === "session") {
               sessionId = data.session_id;
             } else if (data.type === "text") {
-              agentDiv.textContent += data.content;
-              scrollDown();
+              enqueueText(agentDiv, data.content);
             } else if (data.type === "tool") {
               addMessage("tool", "调用工具: " + data.name + "(" + data.arguments + ")");
               scrollDown();
@@ -158,13 +214,18 @@
               addMessage("tool", "结果: " + data.content);
               scrollDown();
             } else if (data.type === "error") {
-              agentDiv.textContent += "\n[错误] " + data.message;
+              flushText(agentDiv);
+              agentDiv.textContent += (agentDiv.textContent ? "\n" : "") + "[错误] " + data.message;
             }
           }
         }
       } catch (err) {
-        agentDiv.textContent += "\n[错误] " + err.message;
+        flushText(agentDiv);
+        agentDiv.textContent += (agentDiv.textContent ? "\n" : "") + "[错误] " + err.message;
       } finally {
+        flushText(agentDiv);
+        agentDiv.classList.remove("streaming");
+        scrollDown();
         input.disabled = false;
         send.disabled = false;
         input.focus();

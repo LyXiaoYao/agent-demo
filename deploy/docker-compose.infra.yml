@@ -19,6 +19,11 @@ services:
       file: docker-compose.yml
       service: tempo
 
+  loki:
+    extends:
+      file: docker-compose.yml
+      service: loki
+
   prometheus:
     extends:
       file: docker-compose.yml
@@ -31,5 +36,6 @@ services:
 
 volumes:
   tempo-data:
+  loki-data:
   prometheus-data:
   grafana-data:

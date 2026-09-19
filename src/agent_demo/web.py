@@ -1,6 +1,7 @@
 """Web service exposing the agent through a streaming chat page."""
 
 import json
+import logging
 import os
 import uuid
 from pathlib import Path
@@ -12,9 +13,11 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from pydantic import BaseModel
 
 from .agent import SYSTEM_PROMPT, _make_client, run_agent_stream
-from .telemetry import record_request, setup_telemetry
+from .telemetry import current_trace_id, record_request, setup_telemetry
 
 setup_telemetry()
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="agent-demo")
 FastAPIInstrumentor.instrument_app(app)
@@ -43,7 +46,9 @@ async def index() -> str:
 @app.post("/api/chat")
 async def chat(req: ChatRequest) -> StreamingResponse:
     session_id = req.session_id or str(uuid.uuid4())
+    trace_id = current_trace_id()
     trace.get_current_span().set_attribute("agent.session_id", session_id)
+    logger.info("收到对话请求 session_id=%s trace_id=%s", session_id, trace_id)
     messages = sessions.setdefault(
         session_id, [{"role": "system", "content": SYSTEM_PROMPT}]
     )
@@ -56,9 +61,18 @@ async def chat(req: ChatRequest) -> StreamingResponse:
                 yield _sse(event)
         except Exception as e:  # noqa: BLE001 - surface errors to the browser
             status = "error"
+            logger.exception(
+                "对话处理异常 session_id=%s trace_id=%s", session_id, trace_id
+            )
             yield _sse({"type": "error", "message": str(e)})
         finally:
             record_request(status)
+            logger.info(
+                "对话结束 session_id=%s status=%s trace_id=%s",
+                session_id,
+                status,
+                trace_id,
+            )
 
     return StreamingResponse(
         event_stream(),

@@ -34,6 +34,16 @@ services:
       - "8889:8889"
     depends_on:
       - tempo
+      - loki
+
+  loki:
+    image: grafana/loki:3.2.1
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./loki/loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
 
   tempo:
     image: grafana/tempo:2.6.1
@@ -73,8 +83,10 @@ services:
     depends_on:
       - prometheus
       - tempo
+      - loki
 
 volumes:
   tempo-data:
   prometheus-data:
   grafana-data:
+  loki-data:

@@ -24,6 +24,8 @@ exporters:
     endpoint: 0.0.0.0:8889
     resource_to_telemetry_conversion:
       enabled: true
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
 
 service:
   telemetry:
@@ -38,3 +40,7 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [loki]

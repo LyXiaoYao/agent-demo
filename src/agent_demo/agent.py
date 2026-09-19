@@ -1,5 +1,6 @@
 """A minimal tool-calling agent built on the OpenAI SDK."""
 
+import logging
 import os
 import time
 from typing import Iterator
@@ -17,6 +18,8 @@ from .telemetry import (
 from .tools import TOOLS, run_tool
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = "You are a helpful assistant. Use tools when needed."
 
@@ -66,12 +69,15 @@ def _run_tool_span(name: str, call_id: str, arguments: str, context) -> str:
         },
         context=context,
     )
+    logger.info("执行工具 name=%s 参数=%s", name, arguments)
     try:
         result = run_tool(name, arguments)
         record_tool_call(name, "success")
+        logger.info("工具执行成功 name=%s 结果=%s", name, result)
         return result
     except Exception as e:  # noqa: BLE001 - re-raised after recording
         record_tool_call(name, "error")
+        logger.error("工具执行失败 name=%s 错误=%s", name, e)
         span.record_exception(e)
         span.set_attribute("error.type", type(e).__name__)
         raise
@@ -214,8 +220,16 @@ def run_agent_stream(
                 llm_span.set_attribute("error.type", type(e).__name__)
                 raise
             finally:
-                record_llm_duration(model, time.perf_counter() - started)
+                elapsed = time.perf_counter() - started
+                record_llm_duration(model, elapsed)
                 _record_usage(llm_span, model, usage)
+                logger.info(
+                    "LLM 调用完成 model=%s 耗时=%.2fs 输入tokens=%s 输出tokens=%s",
+                    model,
+                    elapsed,
+                    usage.prompt_tokens if usage else "-",
+                    usage.completion_tokens if usage else "-",
+                )
                 llm_span.end()
 
             content = "".join(content_parts)

@@ -22,3 +22,19 @@ datasources:
         datasourceUid: prometheus
       nodeGraph:
         enabled: true
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # 日志行中的 trace_id=xxx 变成可点击链接，跳转到 Tempo 查询该 Trace
+        - name: TraceID
+          matcherRegex: "trace_id=([0-9a-fA-F]+)"
+          datasourceUid: tempo
+          url: "$${__value.raw}"
+          urlDisplayLabel: "查看 Trace"

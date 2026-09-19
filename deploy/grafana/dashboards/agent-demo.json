@@ -7,15 +7,15 @@
     {
       "id": 1,
       "type": "stat",
-      "title": "Total requests",
-      "description": "Chat requests handled by the agent.",
+      "title": "总请求数",
+      "description": "Agent 处理的问答请求总数。",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
       "targets": [
         {
           "refId": "A",
           "expr": "sum(agent_requests_total)",
-          "legendFormat": "requests"
+          "legendFormat": "请求数"
         }
       ],
       "fieldConfig": {
@@ -27,15 +27,15 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "Error rate",
-      "description": "Share of requests that returned an error.",
+      "title": "错误率",
+      "description": "请求中返回错误的比例。",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 5, "w": 8, "x": 8, "y": 0 },
       "targets": [
         {
           "refId": "A",
           "expr": "sum(rate(agent_requests_total{agent_status=\"error\"}[$__rate_interval])) / clamp_min(sum(rate(agent_requests_total[$__rate_interval])), 0.000001)",
-          "legendFormat": "error rate"
+          "legendFormat": "错误率"
         }
       ],
       "fieldConfig": {
@@ -47,15 +47,15 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "LLM latency p95",
-      "description": "95th percentile duration of LLM calls.",
+      "title": "LLM 延迟 P95",
+      "description": "LLM 调用耗时的第 95 百分位数。",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
       "targets": [
         {
           "refId": "A",
           "expr": "histogram_quantile(0.95, sum by (le) (rate(agent_llm_duration_seconds_bucket[$__rate_interval])))",
-          "legendFormat": "p95"
+          "legendFormat": "P95"
         }
       ],
       "fieldConfig": {
@@ -67,14 +67,19 @@
     {
       "id": 4,
       "type": "timeseries",
-      "title": "Request rate by status",
+      "title": "按状态的请求速率",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 5 },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (agent_status) (rate(agent_requests_total[$__rate_interval]))",
-          "legendFormat": "{{agent_status}}"
+          "expr": "sum(rate(agent_requests_total{agent_status=\"success\"}[$__rate_interval]))",
+          "legendFormat": "成功"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(agent_requests_total{agent_status=\"error\"}[$__rate_interval]))",
+          "legendFormat": "失败"
         }
       ],
       "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "showPoints": "never" } }, "overrides": [] },
@@ -83,24 +88,24 @@
     {
       "id": 5,
       "type": "timeseries",
-      "title": "LLM latency quantiles",
+      "title": "LLM 延迟分位数",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 5 },
       "targets": [
         {
           "refId": "A",
           "expr": "histogram_quantile(0.50, sum by (le) (rate(agent_llm_duration_seconds_bucket[$__rate_interval])))",
-          "legendFormat": "p50"
+          "legendFormat": "P50"
         },
         {
           "refId": "B",
           "expr": "histogram_quantile(0.95, sum by (le) (rate(agent_llm_duration_seconds_bucket[$__rate_interval])))",
-          "legendFormat": "p95"
+          "legendFormat": "P95"
         },
         {
           "refId": "C",
           "expr": "histogram_quantile(0.99, sum by (le) (rate(agent_llm_duration_seconds_bucket[$__rate_interval])))",
-          "legendFormat": "p99"
+          "legendFormat": "P99"
         }
       ],
       "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10, "lineWidth": 2, "showPoints": "never" } }, "overrides": [] },
@@ -109,14 +114,19 @@
     {
       "id": 6,
       "type": "timeseries",
-      "title": "Token usage rate by type",
+      "title": "按类型的 Token 用量速率",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (token_type) (rate(agent_tokens_total[$__rate_interval]))",
-          "legendFormat": "{{token_type}}"
+          "expr": "sum(rate(agent_tokens_total{token_type=\"input\"}[$__rate_interval]))",
+          "legendFormat": "输入 Token"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(agent_tokens_total{token_type=\"output\"}[$__rate_interval]))",
+          "legendFormat": "输出 Token"
         }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "fillOpacity": 15, "lineWidth": 2, "showPoints": "never", "stacking": { "mode": "normal" } } }, "overrides": [] },
@@ -125,7 +135,7 @@
     {
       "id": 7,
       "type": "timeseries",
-      "title": "Tool calls by tool",
+      "title": "各工具调用速率",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
       "targets": [
@@ -140,13 +150,39 @@
     },
     {
       "id": 8,
+      "type": "logs",
+      "title": "应用日志（Loki）",
+      "description": "来自 Loki 的应用日志，日志中的 trace_id 可点击跳转到 Tempo。",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 21 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{service_name=\"agent-demo\"}",
+          "queryType": "range"
+        }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
+    },
+    {
+      "id": 9,
       "type": "text",
-      "title": "Traces",
+      "title": "链路追踪（Tempo）",
       "datasource": null,
-      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 21 },
+      "gridPos": { "h": 5, "w": 24, "x": 0, "y": 30 },
       "options": {
         "mode": "markdown",
-        "content": "## Distributed traces\n\nTraces are stored in **Tempo**. Open **Explore** (`/explore`), pick the **Tempo** datasource and run a TraceQL query, for example:\n\n```\n{ resource.service.name = \"agent-demo\" }\n```\n\nEach agent turn produces an `invoke_agent agent-demo` span containing `chat <model>` and `execute_tool <name>` child spans. Click a span to see the LLM prompt/completion token counts and tool arguments."
+        "content": "## 分布式链路追踪\n\nTrace 存储在 **Tempo** 中。打开 **Explore**（`/explore`），选择 **Tempo** 数据源并运行 TraceQL 查询，例如：\n\n```\n{ resource.service.name = \"agent-demo\" }\n```\n\n每次问答会产生一个 `invoke_agent agent-demo` Span，包含 `chat <model>`（LLM 调用）和 `execute_tool <name>`（工具调用）子 Span。点击 Span 可查看输入/输出 Token 数与工具参数。\n\n日志中出现的 `trace_id=xxx` 可直接点击跳转到对应 Trace（Loki 数据源的 derived field 已配置）。"
       }
     }
   ],
@@ -156,7 +192,7 @@
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "timezone": "browser",
-  "title": "agent-demo Observability",
+  "title": "agent-demo 可观测性",
   "uid": "agent-demo-obs",
-  "version": 1
+  "version": 2
 }
