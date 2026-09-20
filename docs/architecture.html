@@ -107,13 +107,13 @@
 <!-- ================= HERO ================= -->
 <header class="hero">
   <div class="wrap">
-    <span class="kicker"><span class="dot"></span>OpenTelemetry · Tempo · Prometheus · Grafana</span>
+    <span class="kicker"><span class="dot"></span>OpenTelemetry · Tempo · Prometheus · Loki · Grafana</span>
     <h1>agent-demo <span class="accent">可观测架构</span></h1>
-    <p class="sub">一个基于 OpenAI SDK 的 tool-calling Agent，内置面向 LLM 应用的完整可观测闭环：从业务埋点、OTLP 上报、Collector 采集分发，到 Trace / Metrics 存储，最终在 Grafana 统一展示。本文拆解系统架构，并追踪一条观测数据从产生到可视化的全链路与各阶段格式。</p>
+    <p class="sub">一个基于 OpenAI SDK 的 tool-calling Agent，内置面向 LLM 应用的完整可观测闭环：从业务埋点、OTLP 上报、Collector 采集分发，到 Trace / Metrics / Logs 三类遥测分别落地 Tempo / Prometheus / Loki，最终在 Grafana 统一展示。本文拆解系统架构，并追踪一条观测数据从产生到可视化的全链路与各阶段格式。</p>
     <div class="meta">
       <span class="chip">服务名 <b>agent-demo</b></span>
       <span class="chip">协议 <b>OTLP gRPC :4317</b></span>
-      <span class="chip">维度 <b>Trace + Metrics</b></span>
+      <span class="chip">维度 <b>Trace + Metrics + Logs</b></span>
       <span class="chip">部署 <b>Docker Compose</b></span>
       <span class="chip">语义约定 <b>GenAI SemConv</b></span>
     </div>
@@ -124,7 +124,7 @@
 <section>
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">01</span><h2>系统总览架构</h2></div>
-    <p class="sec-desc">观测系统自下而上分为四层：应用层负责产生遥测数据，Collector 负责接收与分流，Tempo / Prometheus 分别存储 Trace 与 Metrics，Grafana 统一做查询与可视化，并支持 Trace 与指标之间的双向钻取。</p>
+    <p class="sec-desc">观测系统自下而上分为四层：应用层负责产生遥测数据，Collector 负责接收与分流，Tempo / Prometheus / Loki 分别存储 Trace / Metrics / Logs，Grafana 统一做查询与可视化，并支持三类数据之间的关联钻取。</p>
 
     <div class="panel">
       <svg class="diagram" viewBox="0 0 1120 620" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
