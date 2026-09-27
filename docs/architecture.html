@@ -116,6 +116,7 @@
       <span class="chip">维度 <b>Trace + Metrics + Logs</b></span>
       <span class="chip">部署 <b>Docker Compose</b></span>
       <span class="chip">语义约定 <b>GenAI SemConv</b></span>
+      <span class="chip">扩展 <b>opencode 多租户平台（第 07 节）</b></span>
     </div>
   </div>
 </header>
@@ -124,10 +125,10 @@
 <section>
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">01</span><h2>系统总览架构</h2></div>
-    <p class="sec-desc">观测系统自下而上分为四层：应用层负责产生遥测数据，Collector 负责接收与分流，Tempo / Prometheus / Loki 分别存储 Trace / Metrics / Logs，Grafana 统一做查询与可视化，并支持三类数据之间的关联钻取。</p>
+    <p class="sec-desc">观测系统自下而上分为四层：应用层负责产生遥测数据，Collector 负责接收与分流，Tempo / Prometheus / Loki 分别存储 Trace / Metrics / Logs，Grafana 统一做查询与可视化，并支持 Trace ↔ Metrics ↔ Logs 之间的关联钻取。</p>
 
     <div class="panel">
-      <svg class="diagram" viewBox="0 0 1120 620" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+      <svg class="diagram" viewBox="0 0 1200 620" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
         <defs>
           <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
             <path d="M0,0 L9,4.5 L0,9 z" fill="#2563eb"/>
@@ -138,6 +139,9 @@
           <marker id="arrV" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
             <path d="M0,0 L9,4.5 L0,9 z" fill="#7c3aed"/>
           </marker>
+          <marker id="arrG" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 z" fill="#059669"/>
+          </marker>
         </defs>
 
         <!-- layer labels -->
@@ -147,64 +151,79 @@
         <text x="20" y="550" fill="#94a3b8" font-size="11" letter-spacing="2">APPLICATION</text>
 
         <!-- Grafana layer -->
-        <rect x="200" y="30" width="720" height="110" rx="14" fill="#ffffff" stroke="#0d9488" stroke-width="1.4"/>
+        <rect x="200" y="30" width="970" height="110" rx="14" fill="#ffffff" stroke="#0d9488" stroke-width="1.4"/>
         <text x="225" y="62" fill="#0d9488" font-size="14" font-weight="700">Grafana 11.3.0  ·  :3000</text>
         <text x="225" y="84" fill="#5b6b85" font-size="12">统一展示层：匿名 Admin 免登录 · Provisioning 自动建数据源 · 预置「agent-demo Observability」仪表盘</text>
         <!-- inner boxes -->
-        <rect x="225" y="96" width="200" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
-        <text x="235" y="115" fill="#5b6b85" font-size="11.5">数据源 Prometheus (默认)</text>
-        <rect x="440" y="96" width="200" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
-        <text x="450" y="115" fill="#5b6b85" font-size="11.5">数据源 Tempo (Trace)</text>
-        <rect x="655" y="96" width="240" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
-        <text x="665" y="115" fill="#5b6b85" font-size="11.5">Traces ↔ Metrics 双向钻取</text>
+        <rect x="225" y="96" width="210" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="236" y="115" fill="#5b6b85" font-size="11.5">Prometheus (默认)</text>
+        <rect x="447" y="96" width="210" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="458" y="115" fill="#5b6b85" font-size="11.5">Tempo (Trace)</text>
+        <rect x="669" y="96" width="210" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="680" y="115" fill="#5b6b85" font-size="11.5">Loki (Logs)</text>
+        <rect x="891" y="96" width="254" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="902" y="115" fill="#5b6b85" font-size="11.5">Trace ↔ Logs 关联钻取</text>
 
         <!-- Storage layer -->
-        <rect x="200" y="185" width="350" height="120" rx="14" fill="#ffffff" stroke="#7c3aed" stroke-width="1.4"/>
+        <rect x="200" y="185" width="310" height="120" rx="14" fill="#ffffff" stroke="#7c3aed" stroke-width="1.4"/>
         <text x="225" y="217" fill="#7c3aed" font-size="14" font-weight="700">Tempo 2.6.1  ·  :3200</text>
         <text x="225" y="239" fill="#5b6b85" font-size="12">Trace 存储：本地文件后端 /var/tempo</text>
         <text x="225" y="259" fill="#5b6b85" font-size="12">block_retention 1h · 支持 TraceQL</text>
-        <text x="225" y="285" fill="#94a3b8" font-size="11">查询: { resource.service.name="agent-demo" }</text>
+        <text x="225" y="285" fill="#94a3b8" font-size="11">{ resource.service.name="agent-demo" }</text>
 
-        <rect x="570" y="185" width="350" height="120" rx="14" fill="#ffffff" stroke="#2563eb" stroke-width="1.4"/>
-        <text x="595" y="217" fill="#2563eb" font-size="14" font-weight="700">Prometheus v2.55.0  ·  :9090</text>
-        <text x="595" y="239" fill="#5b6b85" font-size="12">Metrics 存储：抓取 collector:8889</text>
-        <text x="595" y="259" fill="#5b6b85" font-size="12">scrape 15s · TSDB 保留 24h</text>
-        <text x="595" y="285" fill="#94a3b8" font-size="11">查询: sum(rate(agent_requests_total[5m]))</text>
+        <rect x="530" y="185" width="310" height="120" rx="14" fill="#ffffff" stroke="#2563eb" stroke-width="1.4"/>
+        <text x="555" y="217" fill="#2563eb" font-size="14" font-weight="700">Prometheus v2.55.0 · :9090</text>
+        <text x="555" y="239" fill="#5b6b85" font-size="12">Metrics 存储：抓取 collector:8889</text>
+        <text x="555" y="259" fill="#5b6b85" font-size="12">scrape 15s · TSDB 保留 24h</text>
+        <text x="555" y="285" fill="#94a3b8" font-size="11">sum(rate(agent_requests_total[5m]))</text>
+
+        <rect x="860" y="185" width="310" height="120" rx="14" fill="#ffffff" stroke="#059669" stroke-width="1.4"/>
+        <text x="885" y="217" fill="#059669" font-size="14" font-weight="700">Loki 3.2.1  ·  :3100</text>
+        <text x="885" y="239" fill="#5b6b85" font-size="12">Log 存储：TSDB 索引 + 文件系统 /loki</text>
+        <text x="885" y="259" fill="#5b6b85" font-size="12">retention 24h · 支持 LogQL</text>
+        <text x="885" y="285" fill="#94a3b8" font-size="11">{service_name="agent-demo"}</text>
 
         <!-- Collector layer -->
-        <rect x="200" y="345" width="720" height="105" rx="14" fill="#ffffff" stroke="#b45309" stroke-width="1.4"/>
+        <rect x="200" y="345" width="970" height="105" rx="14" fill="#ffffff" stroke="#b45309" stroke-width="1.4"/>
         <text x="225" y="377" fill="#b45309" font-size="14" font-weight="700">OpenTelemetry Collector (contrib:0.111.0)</text>
         <text x="225" y="399" fill="#5b6b85" font-size="12">接收 OTLP(gRPC :4317 / HTTP :4318)  →  memory_limiter(75%/20%)  →  batch(1024, 5s)</text>
         <!-- pipelines -->
-        <rect x="225" y="410" width="320" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
-        <text x="235" y="428" fill="#3b4a63" font-size="11.5">pipeline: traces  →  exporter otlp/tempo</text>
-        <rect x="560" y="410" width="335" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
-        <text x="570" y="428" fill="#3b4a63" font-size="11.5">pipeline: metrics  →  exporter prometheus :8889</text>
+        <rect x="225" y="410" width="285" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="235" y="428" fill="#3b4a63" font-size="11.5">pipeline: traces → otlp/tempo</text>
+        <rect x="525" y="410" width="285" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="535" y="428" fill="#3b4a63" font-size="11.5">pipeline: metrics → prometheus</text>
+        <rect x="825" y="410" width="320" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="835" y="428" fill="#3b4a63" font-size="11.5">pipeline: logs → loki :3100</text>
 
         <!-- Application layer -->
-        <rect x="200" y="490" width="720" height="110" rx="14" fill="#ffffff" stroke="#0d9488" stroke-width="1.4"/>
+        <rect x="200" y="490" width="970" height="110" rx="14" fill="#ffffff" stroke="#0d9488" stroke-width="1.4"/>
         <text x="225" y="522" fill="#0d9488" font-size="14" font-weight="700">agent-demo 应用 (Python 3.12 · FastAPI)</text>
-        <text x="225" y="544" fill="#5b6b85" font-size="12">FastAPI + SSE Web (web.py) · CLI (main.py) · tool-calling 循环 (agent.py)</text>
-        <rect x="225" y="556" width="320" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
-        <text x="235" y="575" fill="#3b4a63" font-size="11.5">telemetry.py: TracerProvider + MeterProvider</text>
-        <rect x="560" y="556" width="335" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
-        <text x="570" y="575" fill="#3b4a63" font-size="11.5">埋点: start_span / record_*  ·  OTLP 导出</text>
+        <text x="225" y="544" fill="#5b6b85" font-size="12">FastAPI + SSE Web (web.py) · CLI (main.py) · tool-calling 循环 (agent.py) · logging 业务日志 (含 trace_id)</text>
+        <rect x="225" y="556" width="440" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="235" y="575" fill="#3b4a63" font-size="11.5">telemetry.py: TracerProvider + MeterProvider + LoggerProvider</text>
+        <rect x="680" y="556" width="465" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="690" y="575" fill="#3b4a63" font-size="11.5">埋点: start_span / record_* / logger · OTLP 导出</text>
 
         <!-- arrows: app -> collector -->
-        <line x1="560" y1="490" x2="560" y2="452" stroke="#b45309" stroke-width="1.6" marker-end="url(#arr)"/>
-        <text x="575" y="474" fill="#b45309" font-size="11">OTLP :4317</text>
+        <line x1="685" y1="490" x2="685" y2="452" stroke="#b45309" stroke-width="1.6" marker-end="url(#arr)"/>
+        <text x="700" y="474" fill="#b45309" font-size="11">OTLP :4317</text>
         <!-- collector -> tempo -->
-        <line x1="430" y1="345" x2="375" y2="308" stroke="#7c3aed" stroke-width="1.6" marker-end="url(#arrV)"/>
-        <text x="330" y="330" fill="#7c3aed" font-size="11">otlp/tempo</text>
+        <line x1="355" y1="345" x2="355" y2="310" stroke="#7c3aed" stroke-width="1.6" marker-end="url(#arrV)"/>
+        <text x="300" y="332" fill="#7c3aed" font-size="11">otlp/tempo</text>
         <!-- collector -> prometheus -->
-        <line x1="690" y1="345" x2="745" y2="308" stroke="#2563eb" stroke-width="1.6" marker-end="url(#arr)"/>
-        <text x="730" y="330" fill="#2563eb" font-size="11">:8889 scrape</text>
+        <line x1="685" y1="345" x2="685" y2="310" stroke="#2563eb" stroke-width="1.6" marker-end="url(#arr)"/>
+        <text x="628" y="332" fill="#2563eb" font-size="11">:8889 scrape</text>
+        <!-- collector -> loki -->
+        <line x1="1015" y1="345" x2="1015" y2="310" stroke="#059669" stroke-width="1.6" marker-end="url(#arrG)"/>
+        <text x="960" y="332" fill="#059669" font-size="11">loki push</text>
         <!-- tempo -> grafana -->
-        <line x1="430" y1="185" x2="430" y2="143" stroke="#7c3aed" stroke-width="1.6" marker-end="url(#arrV)"/>
+        <line x1="355" y1="185" x2="355" y2="143" stroke="#7c3aed" stroke-width="1.6" marker-end="url(#arrV)"/>
         <!-- prometheus -> grafana -->
-        <line x1="700" y1="185" x2="700" y2="143" stroke="#2563eb" stroke-width="1.6" marker-end="url(#arr)"/>
+        <line x1="685" y1="185" x2="685" y2="143" stroke="#2563eb" stroke-width="1.6" marker-end="url(#arr)"/>
+        <!-- loki -> grafana -->
+        <line x1="1015" y1="185" x2="1015" y2="143" stroke="#059669" stroke-width="1.6" marker-end="url(#arrG)"/>
       </svg>
-      <div class="diagram-caption">图 1 · 观测系统四层架构与数据流向（应用 → Collector → Tempo/Prometheus → Grafana）</div>
+      <div class="diagram-caption">图 1 · 观测系统四层架构与数据流向（应用 → Collector → Tempo/Prometheus/Loki → Grafana）</div>
     </div>
   </div>
 </section>
@@ -213,7 +232,7 @@
 <section>
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">02</span><h2>观测数据：从采集到展示的全链路</h2></div>
-    <p class="sec-desc">追踪一次问答请求产生的遥测数据，依次经过五个阶段。每个阶段给出该阶段数据的<strong style="color:var(--ink)">真实格式示例</strong>，可以看到同一笔数据在 Trace 与 Metrics 两条管道中如何被打包、传输、存储与查询。</p>
+    <p class="sec-desc">追踪一次问答请求产生的遥测数据，依次经过五个阶段。每个阶段给出该阶段数据的<strong style="color:var(--ink)">真实格式示例</strong>，可以看到同一笔数据在 Trace / Metrics / Logs 三条管道中如何被打包、传输、存储与查询。</p>
 
     <!-- STAGE 1 -->
     <div class="stage">
@@ -224,7 +243,7 @@
       </div>
       <div class="stage-body">
         <div>
-          <p class="flow-note"><b>业务代码低侵入地创建 Span 与指标。</b>根 Span <code>invoke_agent</code> 包裹整个回合；内部按 LLM 调用与工具调用再开子 Span，并写入 GenAI 语义约定属性。指标为 Counter / Histogram，异步周期上报。</p>
+          <p class="flow-note"><b>业务代码低侵入地创建 Span、指标与日志。</b>根 Span <code>invoke_agent</code> 包裹整个回合；内部按 LLM 调用与工具调用再开子 Span，并写入 GenAI 语义约定属性。指标为 Counter / Histogram，异步周期上报；业务日志用标准 <code>logging</code> 输出，自动附带 trace_id。</p>
           <div class="code-label"><span class="lab">埋点代码（agent.py）</span><span class="tag">Python</span></div>
 <pre><span class="tok-c"># 一次问答的根 Span</span>
 agent_span = start_span(<span class="tok-s">"invoke_agent agent-demo"</span>, {
@@ -235,8 +254,10 @@ agent_span = start_span(<span class="tok-s">"invoke_agent agent-demo"</span>, {
     ...
     record_llm_duration(model, seconds)        <span class="tok-c"># Histogram</span>
     record_token_usage(model, in, out)         <span class="tok-c"># Counter</span>
+    logger.info(<span class="tok-s">"LLM 调用完成 model=%s 耗时=%.2fs ..."</span>, ...)
 <span class="tok-k">with</span> start_span(<span class="tok-s">f"execute_tool calculator"</span>, ...):
-    record_tool_call(<span class="tok-s">"calculator"</span>, <span class="tok-s">"success"</span>)</pre>
+    record_tool_call(<span class="tok-s">"calculator"</span>, <span class="tok-s">"success"</span>)
+    logger.info(<span class="tok-s">"工具执行成功 name=%s 结果=%s"</span>, ...)</pre>
         </div>
         <div>
           <div class="code-label"><span class="lab">产出 · OTLP Trace（SpansData JSON 形态）</span><span class="tag">Trace</span></div>
@@ -273,7 +294,7 @@ agent_span = start_span(<span class="tok-s">"invoke_agent agent-demo"</span>, {
       </div>
       <div class="stage-body">
         <div>
-          <p class="flow-note">Trace 走 <code>BatchSpanProcessor</code> 异步批量导出；Metrics 走 <code>PeriodicExportingMetricReader</code>（默认 10s）。Collector 用 <b>OTLP receiver</b> 接收，经 <b>memory_limiter</b> 保护内存、<b>batch</b> 把多条数据聚合后再导出，减少网络往返。</p>
+          <p class="flow-note">Trace 走 <code>BatchSpanProcessor</code> 异步批量导出；Metrics 走 <code>PeriodicExportingMetricReader</code>（默认 10s）；Logs 走 <code>BatchLogRecordProcessor</code>，通过 <code>LoggingHandler</code> 挂到根 Logger——业务代码用标准 <code>logging</code> 即可上报。Collector 用 <b>OTLP receiver</b> 接收，经 <b>memory_limiter</b> 保护内存、<b>batch</b> 聚合后按三条 pipeline 分流导出。</p>
           <div class="code-label"><span class="lab">otel-collector/config.yaml（精简）</span><span class="tag">YAML</span></div>
 <pre>receivers:
   otlp:
@@ -281,12 +302,16 @@ agent_span = start_span(<span class="tok-s">"invoke_agent agent-demo"</span>, {
 processors:
   memory_limiter: { limit_percentage: <span class="tok-n">75</span>, spike_limit_percentage: <span class="tok-n">20</span> }
   batch: { send_batch_size: <span class="tok-n">1024</span>, timeout: <span class="tok-n">5s</span> }
+exporters:
+  loki: { endpoint: <span class="tok-s">"http://loki:3100/loki/api/v1/push"</span> }
 service:
   pipelines:
     traces:  { receivers:[otlp], processors:[memory_limiter,batch],
                exporters:[<span class="tok-t">otlp/tempo</span>] }
     metrics: { receivers:[otlp], processors:[memory_limiter,batch],
-               exporters:[<span class="tok-t">prometheus</span>] }</pre>
+               exporters:[<span class="tok-t">prometheus</span>] }
+    logs:    { receivers:[otlp], processors:[memory_limiter,batch],
+               exporters:[<span class="tok-t">loki</span>] }</pre>
         </div>
         <div>
           <div class="code-label"><span class="lab">产出 · OTLP Metrics（ResourceMetrics）</span><span class="tag">Metrics</span></div>
@@ -308,6 +333,19 @@ service:
     ]}]
   }]
 }</pre>
+          <div class="code-label" style="margin-top:14px"><span class="lab">产出 · OTLP Logs（LogRecords）</span><span class="tag">Logs</span></div>
+<pre>{
+  <span class="tok-s">"resourceLogs"</span>: [{
+    <span class="tok-s">"scopeLogs"</span>: [{<span class="tok-s">"logRecords"</span>: [
+      { <span class="tok-s">"severityText"</span>:<span class="tok-s">"INFO"</span>,
+        <span class="tok-s">"body"</span>:{<span class="tok-s">"stringValue"</span>:<span class="tok-s">"工具执行成功 name=calculator 结果=6"</span>},
+        <span class="tok-s">"attributes"</span>:[{<span class="tok-s">"key"</span>:<span class="tok-s">"trace_id"</span>,<span class="tok-s">"value"</span>:{<span class="tok-s">"stringValue"</span>:<span class="tok-s">"6f8c..."</span>}},
+                     {<span class="tok-s">"key"</span>:<span class="tok-s">"logger.name"</span>,<span class="tok-s">"value"</span>:{<span class="tok-s">"stringValue"</span>:<span class="tok-s">"agent_demo.agent"</span>}}],
+        <span class="tok-s">"traceId"</span>:<span class="tok-s">"6f8c..."</span>, <span class="tok-s">"timeUnixNano"</span>:<span class="tok-s">"1726..."</span>
+      }
+    ]}]
+  }]
+}</pre>
         </div>
       </div>
     </div>
@@ -318,16 +356,16 @@ service:
     <div class="stage">
       <div class="stage-head">
         <span class="stage-badge" style="color:#7c3aed;background:rgba(124,58,237,.12)">3</span>
-        <h3>分路导出 · Trace 与 Metrics 走向不同后端</h3>
-        <span class="route">tempo:4317  ·  prometheus :8889</span>
+        <h3>分路导出 · Trace / Metrics / Logs 走向不同后端</h3>
+        <span class="route">tempo:4317  ·  prometheus :8889  ·  loki :3100</span>
       </div>
       <div class="stage-body">
         <div>
-          <p class="flow-note">Collector 按 pipeline 分流：<b>Trace</b> 通过 <code>otlp/tempo</code> exporter 直接以 OTLP gRPC 写入 Tempo；<b>Metrics</b> 通过 <code>prometheus</code> exporter 在 <code>:8889</code> 暴露 Prometheus exposition 格式，并开启 <code>resource_to_telemetry_conversion</code> 把 Resource 属性（如 service.name）转成指标 label。</p>
+          <p class="flow-note">Collector 按 pipeline 分流：<b>Trace</b> 通过 <code>otlp/tempo</code> exporter 直接以 OTLP gRPC 写入 Tempo；<b>Metrics</b> 通过 <code>prometheus</code> exporter 在 <code>:8889</code> 暴露 Prometheus exposition 格式，并开启 <code>resource_to_telemetry_conversion</code> 把 Resource 属性（如 service.name）转成指标 label；<b>Logs</b> 通过 <code>loki</code> exporter 以 HTTP POST 写入 Loki push API，Resource 属性转为 Loki 流标签（<code>service.name → service_name</code>），日志行内保留 <code>trace_id=xxx</code> 文本用于关联。</p>
         </div>
         <div>
           <div class="code-label"><span class="lab">产出 · Prometheus exposition（:8889，供抓取）</span><span class="tag"> exposition</span></div>
-<pre><span class="tok-c"># HELP agent_requests_total Agent chat requests.
+<pre><span class="tok-c"># HELP agent_requests_total Agent chat requests.</span>
 <span class="tok-c"># TYPE agent_requests_total counter</span>
 agent_requests_total{agent_status=<span class="tok-s">"success"</span>,service_name=<span class="tok-s">"agent-demo"</span>} <span class="tok-n">12</span> <span class="tok-n">1726600800000</span>
 agent_tokens_total{token_type=<span class="tok-s">"output"</span>,gen_ai_request_model=<span class="tok-s">"gpt-4o-mini"</span>} <span class="tok-n">204</span> <span class="tok-n">1726600800000</span>
@@ -335,6 +373,13 @@ agent_llm_duration_seconds_bucket{le=<span class="tok-s">"1"</span>} <span class
 agent_llm_duration_seconds_bucket{le=<span class="tok-s">"5"</span>} <span class="tok-n">11</span>
 agent_llm_duration_seconds_bucket{le=<span class="tok-s">"+Inf"</span>} <span class="tok-n">12</span>
 agent_tool_calls_total{gen_ai_tool_name=<span class="tok-s">"calculator"</span>,tool_status=<span class="tok-s">"success"</span>} <span class="tok-n">5</span></pre>
+          <div class="code-label" style="margin-top:14px"><span class="lab">产出 · Loki push payload（:3100/loki/api/v1/push）</span><span class="tag">Log</span></div>
+<pre>{ <span class="tok-s">"streams"</span>: [{
+    <span class="tok-s">"stream"</span>: { <span class="tok-s">"service_name"</span>:<span class="tok-s">"agent-demo"</span>, <span class="tok-s">"severity"</span>:<span class="tok-s">"info"</span> },
+    <span class="tok-s">"values"</span>: [[
+      <span class="tok-s">"1726600800123456789"</span>,
+      <span class="tok-s">"工具执行成功 name=calculator 结果=6 trace_id=6f8c..."</span>,
+      <span class="tok-s">""</span> ]]}]}</pre>
         </div>
       </div>
     </div>
@@ -345,8 +390,8 @@ agent_tool_calls_total{gen_ai_tool_name=<span class="tok-s">"calculator"</span>,
     <div class="stage">
       <div class="stage-head">
         <span class="stage-badge" style="color:#2563eb;background:rgba(37,99,235,.12)">4</span>
-        <h3>存储与查询 · Tempo（TraceQL）/ Prometheus（PromQL）</h3>
-        <span class="route">Trace 1h  ·  Metric 24h</span>
+        <h3>存储与查询 · Tempo（TraceQL）/ Prometheus（PromQL）/ Loki（LogQL）</h3>
+        <span class="route">Trace 1h  ·  Metric 24h  ·  Log 24h</span>
       </div>
       <div class="stage-body">
         <div>
@@ -360,6 +405,16 @@ agent_tool_calls_total{gen_ai_tool_name=<span class="tok-s">"calculator"</span>,
 ├─ ● execute_tool calculator               <span class="tok-n">0.001s</span>
 └─ ● chat gpt-4o-mini                      <span class="tok-n">1.21s</span>  in=88 out=23</pre>
           <p class="flow-note" style="margin-top:12px">Tempo 以本地块文件存储，<code>max_block_duration=5m</code>、<code>block_retention=1h</code>。</p>
+          <div class="code-label" style="margin-top:14px"><span class="lab">Loki · LogQL 检索业务日志</span><span class="tag">LogQL</span></div>
+<pre><span class="tok-c"># 按服务名查全部日志（标签由 Resource 转换而来）</span>
+{service_name=<span class="tok-s">"agent-demo"</span>}
+
+<span class="tok-c"># 只看错误日志 / 检索关键字</span>
+{service_name=<span class="tok-s">"agent-demo"</span>} |= <span class="tok-s">"工具执行失败"</span>
+
+<span class="tok-c"># 日志总量速率</span>
+sum(rate({service_name=<span class="tok-s">"agent-demo"</span>}[5m]))</pre>
+          <p class="flow-note" style="margin-top:12px">Loki 为 TSDB 索引 + 文件系统 chunks，<code>retention_period=24h</code>。</p>
         </div>
         <div>
           <div class="code-label"><span class="lab">Prometheus · PromQL 聚合查询</span><span class="tag">PromQL</span></div>
@@ -389,8 +444,8 @@ sum(rate(agent_requests_total{agent_status=<span class="tok-s">"error"</span>}[5
       </div>
       <div class="stage-body">
         <div>
-          <p class="flow-note">Grafana 通过 Provisioning 自动挂载两个数据源：<b>Prometheus</b>（默认）渲染指标图表，<b>Tempo</b> 渲染 Trace。配置 <code>tracesToMetrics</code> 与 <code>serviceMap</code> 后，可从一条慢的 LLM 延迟曲线<b>下钻</b>到具体 Trace，也可从 Trace 跳回相关指标。</p>
-          <div class="callout" style="margin-top:14px">预置仪表盘面板：<b>总请求数</b>、<b>错误率</b>（&gt;5% 标红）、<b>LLM p95 延迟</b>（&gt;5s 橙 / &gt;15s 红）、<b>按状态请求速率</b>、<b>Token 消耗</b>、<b>工具调用分布</b>。</div>
+          <p class="flow-note">Grafana 通过 Provisioning 自动挂载三个数据源：<b>Prometheus</b>（默认）渲染指标图表，<b>Tempo</b> 渲染 Trace，<b>Loki</b> 渲染日志。配置 <code>tracesToMetrics</code> 与 <code>serviceMap</code> 后，可从一条慢的 LLM 延迟曲线<b>下钻</b>到具体 Trace；Loki 数据源开启 <code>derivedFields</code> 后，日志行中的 <code>trace_id=xxx</code> 渲染为「查看 Trace」链接，点击即<b>跳转</b>到 Tempo 对应 Trace——实现 Logs → Trace 的故障排查闭环。</p>
+          <div class="callout" style="margin-top:14px">预置仪表盘面板：<b>总请求数</b>、<b>错误率</b>（&gt;5% 标红）、<b>LLM p95 延迟</b>（&gt;5s 橙 / &gt;15s 红）、<b>按状态请求速率</b>、<b>Token 消耗</b>、<b>工具调用分布</b>、<b>应用日志（Loki）</b>（日志行内 trace_id 可点击跳转）。</div>
         </div>
         <div>
           <div class="code-label"><span class="lab">Grafana 数据源关联配置（provisioning）</span><span class="tag">YAML</span></div>
@@ -403,6 +458,16 @@ sum(rate(agent_requests_total{agent_status=<span class="tok-s">"error"</span>}[5
     serviceMap:
       datasourceUid: prometheus
     nodeGraph: { enabled: <span class="tok-k">true</span> }
+
+- name: Loki
+  type: loki
+  url: http://loki:<span class="tok-n">3100</span>
+  jsonData:
+    maxLines: <span class="tok-n">1000</span>
+    derivedFields:
+      <span class="tok-c"># 日志行 trace_id=xxx → 可点击跳转 Tempo</span>
+      - matcherRegex: <span class="tok-s">"trace_id=([0-9a-fA-F]+)"</span>
+        datasourceUid: tempo
 
 - name: Prometheus
   type: prometheus
@@ -430,7 +495,7 @@ sum(rate(agent_requests_total{agent_status=<span class="tok-s">"error"</span>}[5
           <div class="lvl" style="padding-left:24px"><span class="pill" style="color:var(--blue)">LLM</span><span class="name">chat gpt-4o-mini</span> <span class="meta">in=88 out=23</span></div>
           <div class="lvl" style="padding-left:24px;color:var(--ink3)"><span class="meta">→ 返回最终回答（无 tool_calls，循环结束）</span></div>
         </div>
-        <div class="callout" style="margin-top:18px">父子关系通过 <code>trace_id / span_id / parent_span_id</code> 串联；FastAPI 入口另有自动产生的 <code>http.server.request</code> Span。</div>
+        <div class="callout" style="margin-top:18px">父子关系通过 <code>trace_id / span_id / parent_span_id</code> 串联；FastAPI 入口另有自动产生的 <code>http.server.request</code> Span。业务日志经 OTel <code>LoggingHandler</code> 自动附加当前 Span 的 trace_id，且 Web 层日志显式写入 <code>trace_id=xxx</code>，因此每条日志都能在 Loki 中点击跳转到 Tempo。</div>
       </div>
 
       <div class="panel" style="padding:0;overflow:hidden">
@@ -474,7 +539,7 @@ sum(rate(agent_requests_total{agent_status=<span class="tok-s">"error"</span>}[5
 <section>
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">05</span><h2>部署形态：Docker Compose 服务拓扑</h2></div>
-    <p class="sec-desc">一条命令拉起五个服务；也可用 <code>docker-compose.infra.yml</code> 只起监控栈，应用在宿主机运行并上报到 <code>localhost:4317</code>。</p>
+    <p class="sec-desc">一条命令拉起六个服务；也可用 <code>docker-compose.infra.yml</code> 只起监控栈，应用在宿主机运行并上报到 <code>localhost:4317</code>。</p>
 
     <div class="panel" style="padding:0;overflow:hidden">
       <table class="tbl">
@@ -483,17 +548,18 @@ sum(rate(agent_requests_total{agent_status=<span class="tok-s">"error"</span>}[5
         </tr></thead>
         <tbody>
           <tr><td class="mono">app</td><td>本地构建 (python:3.12-slim)</td><td class="mono">8000</td><td>Web 应用，上报到 otel-collector:4317</td></tr>
-          <tr><td class="mono">otel-collector</td><td>otel/opentelemetry-collector-contrib:0.111.0</td><td class="mono">4317 / 4318 / 8889</td><td>接收、批处理、分流 Trace 与 Metrics</td></tr>
+          <tr><td class="mono">otel-collector</td><td>otel/opentelemetry-collector-contrib:0.111.0</td><td class="mono">4317 / 4318 / 8889</td><td>接收、批处理，分流 Trace / Metrics / Logs</td></tr>
           <tr><td class="mono">tempo</td><td>grafana/tempo:2.6.1</td><td class="mono">3200</td><td>Trace 本地存储（保留 1h）</td></tr>
           <tr><td class="mono">prometheus</td><td>prom/prometheus:v2.55.0</td><td class="mono">9090</td><td>抓取并存储 Metrics（保留 24h）</td></tr>
+          <tr><td class="mono">loki</td><td>grafana/loki:3.2.1</td><td class="mono">3100</td><td>Log 本地存储（TSDB + 文件系统，保留 24h）</td></tr>
           <tr><td class="mono">grafana</td><td>grafana/grafana:11.3.0</td><td class="mono">3000</td><td>统一展示，自动配数据源与仪表盘</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="grid g2" style="margin-top:18px">
-      <div class="callout"><b>关键环境变量：</b><code>OTEL_ENABLED</code>（置 false 完全关闭遥测）、<code>OTEL_SERVICE_NAME</code>、<code>OTEL_EXPORTER_OTLP_ENDPOINT</code>、<code>OTEL_METRIC_EXPORT_INTERVAL</code>。</div>
-      <div class="callout"><b>两种部署：</b>全栈 <code>docker compose up -d --build</code>；混合模式下应用跑宿主机、监控跑 Docker。</div>
+      <div class="callout"><b>关键环境变量：</b><code>OTEL_ENABLED</code>（置 false 完全关闭遥测）、<code>OTEL_SERVICE_NAME</code>、<code>OTEL_EXPORTER_OTLP_ENDPOINT</code>、<code>OTEL_METRIC_EXPORT_INTERVAL</code>、<code>LOG_LEVEL</code>（日志级别）。</div>
+      <div class="callout"><b>两种部署：</b>全栈 <code>docker compose up -d --build</code>；混合模式下应用跑宿主机、监控跑 Docker（含 Loki）。数据卷：<code>tempo-data</code> / <code>prometheus-data</code> / <code>loki-data</code> / <code>grafana-data</code>。</div>
     </div>
   </div>
 </section>
@@ -506,7 +572,8 @@ sum(rate(agent_requests_total{agent_status=<span class="tok-s">"error"</span>}[5
       <div class="panel">
         <h3 style="font-size:16px;margin-bottom:14px;color:var(--green)">本期已实现</h3>
         <ul style="list-style:none;color:var(--ink2);font-size:14px">
-          <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· Trace + Metrics 覆盖 Agent 全链路</li>
+          <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· Trace + Metrics + Logs 覆盖 Agent 全链路（Logs 经 OTLP 写入 Loki）</li>
+          <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· 日志与 Trace 关联：日志行含 trace_id，可一键跳转 Tempo</li>
           <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· 遵循 OTel GenAI 语义约定，后端可替换</li>
           <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· 低侵入、可一键关闭，无后端不影响主流程</li>
           <li style="padding:7px 0">· Collector 统一接入，应用不直接暴露指标</li>
@@ -515,11 +582,209 @@ sum(rate(agent_requests_total{agent_status=<span class="tok-s">"error"</span>}[5
       <div class="panel">
         <h3 style="font-size:16px;margin-bottom:14px;color:var(--rose)">MVP 边界（暂不做）</h3>
         <ul style="list-style:none;color:var(--ink2);font-size:14px">
-          <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· 不做 Logs / Loki 日志采集</li>
           <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· 不做告警规则与通知</li>
-          <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· 单实例本地存储，非生产高可用</li>
-          <li style="padding:7px 0">· 不采集 Prompt / Completion 正文，规避隐私风险</li>
+          <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· 单实例本地存储，非生产高可用（Trace 1h / Metric 24h / Log 24h）</li>
+          <li style="padding:7px 0;border-bottom:1px dashed var(--line)">· 不采集 Prompt / Completion 正文，规避隐私风险</li>
+          <li style="padding:7px 0">· 未使用 OTel auto-instrumentation，埋点手写以贴合 Agent 语义</li>
         </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 07 多租户 opencode 平台 ================= -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-num">07</span><h2>扩展场景：多容器多租户 opencode Agent 平台</h2></div>
+    <p class="sec-desc">前六节描述单体 agent-demo；本节外推到更接近生产的形态——<strong style="color:var(--ink)">平台为每个租户 / 每个会话动态拉起独立的 opencode 容器</strong>，Agent 实例通过 OpenTelemetry 插件（<code>opencode-otel</code>）统一接入本方案的 Tempo / Prometheus / Loki 监控栈，监控侧做四方面适配：采集层弹性、租户身份标准化、存储隔离与容量、展示隔离。</p>
+
+    <div class="panel">
+      <svg class="diagram" viewBox="0 0 1200 640" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <!-- layer labels -->
+        <text x="20" y="110" fill="#94a3b8" font-size="11" letter-spacing="2">PLATFORM</text>
+        <text x="20" y="320" fill="#94a3b8" font-size="11" letter-spacing="2">COLLECT</text>
+        <text x="20" y="455" fill="#94a3b8" font-size="11" letter-spacing="2">STORAGE</text>
+        <text x="20" y="585" fill="#94a3b8" font-size="11" letter-spacing="2">PRESENT</text>
+
+        <!-- Platform layer -->
+        <rect x="200" y="30" width="970" height="160" rx="14" fill="#ffffff" stroke="#7c3aed" stroke-width="1.4"/>
+        <text x="225" y="60" fill="#7c3aed" font-size="14" font-weight="700">opencode Agent 平台 · 控制面（Gateway + N × opencode 容器）</text>
+        <text x="225" y="82" fill="#5b6b85" font-size="12">每租户 / 每会话一个容器动态拉起 · 容器内 opencode 加载 opencode-otel 插件 · 租户间文件 / 网络 / 凭证隔离</text>
+        <rect x="225" y="94" width="310" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="235" y="113" fill="#3b4a63" font-size="11.5">Gateway / API（鉴权 · 配额 · 编排）</text>
+        <rect x="550" y="94" width="310" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="560" y="113" fill="#3b4a63" font-size="11.5">opencode 容器 · tenantA / session-001</text>
+        <rect x="875" y="94" width="270" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="885" y="113" fill="#3b4a63" font-size="11.5">opencode 容器 ×N 并发</text>
+        <rect x="225" y="132" width="310" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="235" y="151" fill="#3b4a63" font-size="11.5">镜像内置插件 opencode-otel</text>
+        <rect x="550" y="132" width="595" height="30" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="560" y="151" fill="#3b4a63" font-size="11.5">OTEL_RESOURCE_ATTRIBUTES: service.name / tenant.id / session.id / host.name</text>
+
+        <!-- arrows platform -> collector -->
+        <line x1="685" y1="190" x2="685" y2="257" stroke="#7c3aed" stroke-width="1.6" marker-end="url(#arrV)"/>
+        <text x="700" y="228" fill="#7c3aed" font-size="11">OTLP :4317 · 每容器一个遥测源</text>
+
+        <!-- Collector layer -->
+        <rect x="200" y="262" width="970" height="100" rx="14" fill="#ffffff" stroke="#b45309" stroke-width="1.4"/>
+        <text x="225" y="292" fill="#b45309" font-size="14" font-weight="700">otel-collector（多副本 + LB）</text>
+        <text x="225" y="314" fill="#5b6b85" font-size="12">resourcedetection → resource/tenant（归一化 tenant.id）→ memory_limiter → batch → sending_queue / retry</text>
+        <rect x="225" y="324" width="285" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="235" y="342" fill="#3b4a63" font-size="11.5">pipeline: traces → otlp/tempo</text>
+        <rect x="525" y="324" width="285" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="535" y="342" fill="#3b4a63" font-size="11.5">pipeline: metrics → prometheus</text>
+        <rect x="825" y="324" width="320" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="835" y="342" fill="#3b4a63" font-size="11.5">pipeline: logs → loki (+OrgID)</text>
+
+        <!-- arrows collector -> storage -->
+        <line x1="355" y1="362" x2="355" y2="391" stroke="#7c3aed" stroke-width="1.6" marker-end="url(#arrV)"/>
+        <line x1="685" y1="362" x2="685" y2="391" stroke="#2563eb" stroke-width="1.6" marker-end="url(#arr)"/>
+        <line x1="1015" y1="362" x2="1015" y2="391" stroke="#059669" stroke-width="1.6" marker-end="url(#arrG)"/>
+
+        <!-- Storage layer -->
+        <rect x="200" y="396" width="310" height="104" rx="14" fill="#ffffff" stroke="#7c3aed" stroke-width="1.4"/>
+        <text x="225" y="424" fill="#7c3aed" font-size="14" font-weight="700">Tempo（Trace）</text>
+        <text x="225" y="444" fill="#5b6b85" font-size="12">多租户: OrgID 或 tenant.id 属性</text>
+        <text x="225" y="462" fill="#5b6b85" font-size="12">retention 24h~7d · TraceQL</text>
+        <text x="225" y="486" fill="#94a3b8" font-size="11">{ resource.tenant.id="tenantA" }</text>
+
+        <rect x="530" y="396" width="310" height="104" rx="14" fill="#ffffff" stroke="#2563eb" stroke-width="1.4"/>
+        <text x="555" y="424" fill="#2563eb" font-size="14" font-weight="700">Prometheus（Metrics）</text>
+        <text x="555" y="444" fill="#5b6b85" font-size="12">tenant_id 标签 · 基数治理</text>
+        <text x="555" y="462" fill="#5b6b85" font-size="12">retention 7~30d · Recording Rules</text>
+        <text x="555" y="486" fill="#94a3b8" font-size="11">sum by(tenant_id)(rate(...[5m]))</text>
+
+        <rect x="860" y="396" width="310" height="104" rx="14" fill="#ffffff" stroke="#059669" stroke-width="1.4"/>
+        <text x="885" y="424" fill="#059669" font-size="14" font-weight="700">Loki（Logs）</text>
+        <text x="885" y="444" fill="#5b6b85" font-size="12">多租户: X-Scope-OrgID 隔离</text>
+        <text x="885" y="462" fill="#5b6b85" font-size="12">retention 7~30d · per-tenant 限流</text>
+        <text x="885" y="486" fill="#94a3b8" font-size="11">{tenant_id="tenantA"}</text>
+
+        <!-- arrows storage -> grafana -->
+        <line x1="355" y1="500" x2="355" y2="525" stroke="#7c3aed" stroke-width="1.6" marker-end="url(#arrV)"/>
+        <line x1="685" y1="500" x2="685" y2="525" stroke="#2563eb" stroke-width="1.6" marker-end="url(#arr)"/>
+        <line x1="1015" y1="500" x2="1015" y2="525" stroke="#059669" stroke-width="1.6" marker-end="url(#arrG)"/>
+
+        <!-- Grafana layer -->
+        <rect x="200" y="530" width="970" height="92" rx="14" fill="#ffffff" stroke="#0d9488" stroke-width="1.4"/>
+        <text x="225" y="558" fill="#0d9488" font-size="14" font-weight="700">Grafana · 租户隔离展示与钻取</text>
+        <text x="225" y="578" fill="#5b6b85" font-size="12">Folder / Team 按租户隔离 · $tenant / $session 模板变量 · 日志 trace_id 一键跳转 Tempo</text>
+        <rect x="225" y="586" width="290" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="235" y="604" fill="#3b4a63" font-size="11.5">仪表盘: $tenant / $session 变量</text>
+        <rect x="530" y="586" width="290" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="540" y="604" fill="#3b4a63" font-size="11.5">按租户 Folder + 权限</text>
+        <rect x="835" y="586" width="310" height="28" rx="7" fill="#f1f5fb" stroke="#dbe3ef"/>
+        <text x="845" y="604" fill="#3b4a63" font-size="11.5">数据源注入 X-Scope-OrgID</text>
+      </svg>
+      <div class="diagram-caption">图 2 · 多容器多租户 opencode Agent 平台的接入拓扑（平台容器 → Collector 多副本 → 三后端 → Grafana 租户视图）</div>
+    </div>
+
+    <div class="grid g2" style="margin-top:18px">
+      <div class="panel">
+        <h3 style="font-size:16px;margin-bottom:12px">Agent 侧 · opencode-otel 插件接入</h3>
+        <p class="flow-note">opencode-otel（npm v1.2.1+）拦截 opencode 进程 stderr，按 <code>ERROR/WARN/INFO/DEBUG</code> 前缀解析级别封装为 OTLP LogRecord 批量导出（stderr 原样保留），并支持可选的会话关联 Trace（仅 gRPC）；未使用的 metrics 环境变量被安全忽略。插件未配置日志端点时保持不激活。</p>
+        <div class="code-label"><span class="lab">opencode.json（打进容器镜像）</span><span class="tag">JSON</span></div>
+<pre>{
+  <span class="tok-s">"plugin"</span>: [<span class="tok-s">"opencode-otel"</span>]
+}</pre>
+        <div class="code-label"><span class="lab">平台拉起容器时按租户注入</span><span class="tag">Env</span></div>
+<pre>OTEL_EXPORTER_OTLP_LOGS_ENDPOINT=<span class="tok-s">http://otel-collector:4317</span>
+OTEL_EXPORTER_OTLP_LOGS_PROTOCOL=<span class="tok-s">grpc</span>
+OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=<span class="tok-s">http://otel-collector:4317</span>
+OTEL_EXPORTER_OTLP_TIMEOUT=<span class="tok-n">2000</span>
+<span class="tok-c"># 租户身份：service.name 按租户命名</span>
+OTEL_RESOURCE_ATTRIBUTES=<span class="tok-s">service.name=opencode-tenantA,</span>\
+<span class="tok-s">  service.namespace=agent-platform,</span>\
+<span class="tok-s">  tenant.id=tenantA,session.id=s-20260927-001,</span>\
+<span class="tok-s">  host.name=$(hostname)</span>
+OTEL_SERVICE_NAME=<span class="tok-s">opencode-tenantA</span></pre>
+        <div class="callout" style="margin-top:14px">多租户部署可用 <code>OTEL_PLUGIN_CONFIG_PATH</code> 指向每容器专属 <code>otel.json</code>（env 优先）。需要「会话 → 消息 → 工具调用」完整 Span 树时，可按 <code>@opencode-ai/plugin</code> 自研插件，在 <code>session.created / tool.execute.* / session.error</code> 等钩子中建 Span，复用同一租户身份。</div>
+      </div>
+      <div class="panel">
+        <h3 style="font-size:16px;margin-bottom:12px">监控侧 · Collector 多租户适配</h3>
+        <p class="flow-note">采集层升级三件事：<b>横向弹性</b>（多副本 + LB，sending_queue/retry 抗后端抖动）、<b>身份标准化</b>（resourcedetection 补容器身份，resource 处理器归一化租户字段）、<b>规模治理</b>（tail_sampling 采样、filter 控基数）。</p>
+        <div class="code-label"><span class="lab">otel-collector/config.yaml（增量）</span><span class="tag">YAML</span></div>
+<pre>processors:
+  resourcedetection:
+    detectors: [<span class="tok-s">env, system, docker</span>]
+  resource/tenant:
+    attributes:
+      - key: <span class="tok-s">service.namespace</span>
+        value: <span class="tok-s">agent-platform</span>
+        action: upsert
+  memory_limiter:
+    { check_interval: <span class="tok-n">1s</span>, limit_percentage: <span class="tok-n">75</span> }
+  batch: { send_batch_size: <span class="tok-n">2048</span>, timeout: <span class="tok-n">5s</span> }
+
+exporters:
+  otlp/tempo:
+    endpoint: <span class="tok-s">tempo:4317</span>
+    sending_queue: { enabled: <span class="tok-k">true</span> }
+    retry_on_failure: { enabled: <span class="tok-k">true</span> }
+
+<span class="tok-c"># 三条 pipeline 均插入 resourcedetection 与
+# resource/tenant；traces 可再加 tail_sampling</span></pre>
+        <div class="callout" style="margin-top:14px">三类信号统一携带 <code>tenant.id</code> / <code>session.id</code>；Metrics 开启 <code>resource_to_telemetry_conversion</code> 后按 <code>tenant_id</code> 聚合，Logs 转为流标签 <code>tenant_id</code>，Trace 用 TraceQL 属性检索。</div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px;padding:0;overflow:hidden">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:16%">后端</th><th style="width:26%">单体默认（第 05 节）</th><th>多租户适配</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">Tempo</td>
+            <td>保留 1h，单租户</td>
+            <td>保留 24h~7d；多租户两路线：<b>① OrgID 真隔离</b>（multitenant_enabled + X-Scope-OrgID，需 per-tenant exporter / routing connector）；<b>② 属性检索</b>（单租户模式，TraceQL <code>{ resource.tenant.id="tenantA" }</code>，部署简单隔离弱）</td>
+          </tr>
+          <tr>
+            <td class="mono">Prometheus</td>
+            <td>保留 24h</td>
+            <td>保留 7~30d + <code>retention.size</code> 控盘；<code>tenant_id</code> 成为普通 label，警惕基数膨胀（租户×实例×指标×标签）；Recording Rules 预聚合按租户关键指标；更大规模按租户分片</td>
+          </tr>
+          <tr>
+            <td class="mono">Loki</td>
+            <td>单租户，保留 24h</td>
+            <td>推荐 <code>auth_enabled: true</code> + <code>X-Scope-OrgID</code> 真隔离（routing connector 或 Loki 原生 OTLP 端点按租户写入）；或单租户模式以 <code>tenant_id</code> 为流标签（流基数 = 租户×服务×级别，可控），配 per-tenant 限流</td>
+          </tr>
+          <tr>
+            <td class="mono">Grafana</td>
+            <td>匿名 Admin 单空间</td>
+            <td>按租户 Folder + Team 权限隔离；仪表盘顶部 <code>$tenant / $session</code> 模板变量；多租户后端需在数据源配置 <code>httpHeader: X-Scope-OrgID</code>；大型场景按租户拆组织 / 实例</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid g2" style="margin-top:18px">
+      <div class="callout"><b>容量粗估：</b>Loki 磁盘 ≈ 每容器日志量 × 并发容器数 × 保留天数；指标基数先灰度 1~2 个租户观测 cardinality 再全量放开；Trace 采样率按「错误/慢请求全保留，其余抽样」折中成本。</div>
+      <div class="callout"><b>生产演进：</b>编排上 k8s（HPA + 每租户 ResourceQuota）；Collector Deployment 多副本；Tempo / Loki 存储换对象存储（S3 后端）支撑长保留期；配额、保留期、告警按租户策略配置。Docker Compose 下仅需第 05 节基础 + 上述增量配置 + <code>platform-gateway</code> 服务。</div>
+    </div>
+
+    <div class="grid g2" style="margin-top:18px">
+      <div class="panel">
+        <div class="code-label" style="margin-top:0"><span class="lab">多租户查询示例</span><span class="tag">Query</span></div>
+<pre><span class="tok-c"># TraceQL · 某租户的错误会话</span>
+{ resource.tenant.id=<span class="tok-s">"tenantA"</span>
+  &amp;&amp; status.message=~<span class="tok-s">".*error.*"</span> }
+
+<span class="tok-c"># LogQL · 某租户错误日志（点击 trace_id 跳转）</span>
+{service_name=<span class="tok-s">"opencode-tenantA"</span>} |= <span class="tok-s">"ERROR"</span>
+
+<span class="tok-c"># PromQL · 按租户聚合会话速率</span>
+sum by(tenant_id)(rate(agent_requests_total[<span class="tok-n">5m</span>]))</pre>
+      </div>
+      <div class="panel">
+        <h3 style="font-size:16px;margin-bottom:12px;color:var(--teal)">一次会话的排查路径</h3>
+        <div class="tree">
+          <div class="lvl"><span class="pill" style="color:var(--violet)">GATEWAY</span><span class="name">gateway.create_session</span> <span class="meta">tenant.id="tenantA"</span></div>
+          <div class="lvl" style="padding-left:24px"><span class="pill" style="color:var(--amber)">SPAWN</span><span class="name">拉起 opencode 容器</span> <span class="meta">容器/编排指标</span></div>
+          <div class="lvl" style="padding-left:24px"><span class="pill" style="color:var(--teal)">AGENT</span><span class="name">opencode 会话</span> <span class="meta">logs: {service_name="opencode-tenantA"}</span></div>
+          <div class="lvl" style="padding-left:24px"><span class="pill" style="color:var(--rose)">DEBUG</span><span class="name">日志行 trace_id</span> <span class="meta">→ 点击 → Tempo 对应 Trace</span></div>
+        </div>
+        <div class="callout" style="margin-top:14px">与第 02 节完全同一套语义约定与钻取方式——平台只是把「一个应用」变成「N 个可替换的 Agent 实例」，可观测闭环不变，唯一区别是所有查询先带 <code>tenant.id</code> 维度。</div>
       </div>
     </div>
   </div>
@@ -528,7 +793,7 @@ sum(rate(agent_requests_total{agent_status=<span class="tok-s">"error"</span>}[5
 <footer>
   <div class="wrap">
     <span>agent-demo · 可观测架构文档</span>
-    <span class="mono">OpenTelemetry · Tempo · Prometheus · Grafana · Docker Compose</span>
+    <span class="mono">OpenTelemetry · Tempo · Prometheus · Loki · Grafana · opencode-otel · Docker Compose</span>
   </div>
 </footer>
 

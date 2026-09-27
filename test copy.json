@@ -1,0 +1,20 @@
+{
+  "directory": "/Users/luv/study",
+  "project": "global",
+  "payload": {
+    "id": "evt_0c49f791b001g5XAMmClli0DP0",
+    "type": "message.updated",
+    "properties": {
+      "sessionID": "ses_f3b61e175ffeut3lMl0Mt6vDjT",
+      "info": {
+        "role": "user",
+        "time": { "created": 1790005142187 },
+        "agent": "build",
+        "model": { "providerID": "firemoutain", "modelID": "Qwen3.7-Plus" },
+        "summary": { "diffs": [] },
+        "id": "msg_0c49ee28b0019Z59ayllRGwzld",
+        "sessionID": "ses_f3b61e175ffeut3lMl0Mt6vDjT"
+      }
+    }
+  }
+}
